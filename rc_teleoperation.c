@@ -12,6 +12,16 @@
 #include <roboticscape.h>
 
 
+// possible modes, user selected with command line arguments
+typedef enum m_mode_t{
+    DISABLED,
+    NORMAL,
+    BRAKE,
+    FREE,
+    SWEEP
+} m_mode_t;
+
+
 // function declarations
 void on_pause_pressed();
 void on_pause_released();
@@ -26,6 +36,12 @@ void on_pause_released();
 * - rc_cleanup() at the end
 *******************************************************************************/
 int main(){
+	double duty = 0.0;
+	int ch = 1;
+	int c, in;
+	int all = 1;	// set to 0 if a motor (-m) argument is given 
+	m_mode_t m_mode = DISABLED;
+
 	// always initialize cape library first
 	if(rc_initialize()){
 		fprintf(stderr,"ERROR: failed to initialize rc_initialize(), are you root?\n");
@@ -33,12 +49,13 @@ int main(){
 	}
 
 	// do your own initialization here
-	printf("\nHello BeagleBone\n");
+	printf("\nStarting Teleoperation of BeagleBone Blue\n");
 	rc_set_pause_pressed_func(&on_pause_pressed);
 	rc_set_pause_released_func(&on_pause_released);
 
 	// done initializing so set state to RUNNING
 	rc_set_state(RUNNING); 
+    rc_enable_motors();
 
 	// Keep looping until state changes to EXITING
 	while(rc_get_state()!=EXITING){
@@ -47,12 +64,49 @@ int main(){
 			// do things
 			rc_set_led(GREEN, ON);
 			rc_set_led(RED, OFF);
-		}
-		else if(rc_get_state()==PAUSED){
-			// do other things
-			rc_set_led(GREEN, OFF);
-			rc_set_led(RED, ON);
-		}
+            m_mode = NORMAL;
+            duty = 1.0;
+
+        	// decide what to do
+        	switch(m_mode){
+            	case NORMAL:
+            		if(all){
+            			printf("sending duty cycle %0.4f to all motors\n", duty);
+            			rc_set_motor_all(duty);
+            		}
+            		else{
+            			printf("sending duty cycle %0.4f to motor %d\n", duty, ch);
+            			rc_set_motor(ch,duty);
+            		}
+            		break;
+            	case FREE:
+            		if(all){
+            			printf("Letting all motors free spin\n");
+            			rc_set_motor_free_spin_all(duty);
+            		}
+            		else{
+            			printf("Letting motor %d free spin\n", ch);
+            			rc_set_motor_free_spin(ch);
+            		}
+            		break;
+            	case BRAKE:
+            		if(all){
+            			printf("Braking all motors\n");
+            			rc_set_motor_brake_all();
+            		}
+            		else{
+            			printf("Braking motor %d\n", ch);
+            			rc_set_motor_brake(ch);
+            		}
+            		break;
+            	default:
+	    	break;
+        }
+    }else if(rc_get_state()==PAUSED){
+		// do other things
+		rc_set_led(GREEN, OFF);
+		rc_set_led(RED, ON);
+	}
 		// always sleep at some point
 		usleep(100000);
 	}
