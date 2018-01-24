@@ -41,6 +41,7 @@ int main(){
 	int c, in;
 	int all = 1;	// set to 0 if a motor (-m) argument is given 
 	m_mode_t m_mode = DISABLED;
+    char direction = 'w';
 
 	// always initialize cape library first
 	if(rc_initialize()){
@@ -65,48 +66,54 @@ int main(){
 			rc_set_led(GREEN, ON);
 			rc_set_led(RED, OFF);
             m_mode = NORMAL;
-            duty = 1.0;
+            duty = 0.5;
 
-        	// decide what to do
-        	switch(m_mode){
-            	case NORMAL:
-            		if(all){
-            			printf("sending duty cycle %0.4f to all motors\n", duty);
-            			rc_set_motor_all(duty);
-            		}
-            		else{
-            			printf("sending duty cycle %0.4f to motor %d\n", duty, ch);
-            			rc_set_motor(ch,duty);
-            		}
-            		break;
-            	case FREE:
-            		if(all){
-            			printf("Letting all motors free spin\n");
-            			rc_set_motor_free_spin_all(duty);
-            		}
-            		else{
-            			printf("Letting motor %d free spin\n", ch);
-            			rc_set_motor_free_spin(ch);
-            		}
-            		break;
-            	case BRAKE:
-            		if(all){
-            			printf("Braking all motors\n");
-            			rc_set_motor_brake_all();
-            		}
-            		else{
-            			printf("Braking motor %d\n", ch);
-            			rc_set_motor_brake(ch);
-            		}
-            		break;
-            	default:
-	    	break;
+            direction = getc(stdin);
+
+            switch(direction){
+                case 'w':
+                    printf("Moving forward\n");
+                    rc_set_motor_all(duty);
+                    break;
+                case 'a':
+                    printf("Turning left\n");
+                    rc_set_motor(1, -duty);
+                    rc_set_motor(2, -duty);
+                    rc_set_motor(3, duty);
+                    rc_set_motor(4, duty);
+                    break;
+                case 'd':
+                    printf("Turning right\n");
+                    rc_set_motor(1, duty);
+                    rc_set_motor(2, duty);
+                    rc_set_motor(3, -duty);
+                    rc_set_motor(4, -duty);
+                    break;
+                case 's':
+                    printf("Reversing\n");
+                    rc_set_motor_all(-duty);
+                    break;
+                case 'e':
+                    printf("Braking all motors\n");
+                    rc_set_motor_brake_all();
+                    break;
+                case '+':
+                    printf("increasing speed\n");
+                    duty += 0.1;
+                    break;
+                case '-':
+                    printf("decreasing speed\n");
+                    duty -= 0.1;
+                    break;
+                default: 
+                    /* conitnue last action */
+                    break;
+            }
+        }else if(rc_get_state()==PAUSED){
+            // do other things
+            rc_set_led(GREEN, OFF);
+            rc_set_led(RED, ON);
         }
-    }else if(rc_get_state()==PAUSED){
-		// do other things
-		rc_set_led(GREEN, OFF);
-		rc_set_led(RED, ON);
-	}
 		// always sleep at some point
 		usleep(100000);
 	}
